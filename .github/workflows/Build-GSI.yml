@@ -1,20 +1,15 @@
 name: GSI_Build
 
-on:
-  workflow_dispatch:
-    inputs:
-      ROM_URL:
-        description: 'ROM_URL'
-        required: true
-        default: 'https://bigota.d.miui.com/V12.5.3.0.RJDCNXM/miui_APOLLO_V12.5.3.0.RJDCNXM_d98b4e09b5_11.0.zip'
-      ROM_NAME:
-        description: 'OS_TYPE'
-        required: true
-        default: 'Generic'
-      REPACK_NAME:
-        description: 'REPACK_NAME'
-        required: true
-        default: 'SGSI.zip'
+  watch:
+    types: [started]
+    
+env:
+  ROM_URL: https://bigota.d.miui.com/V12.5.3.0.RJDCNXM/miui_APOLLO_V12.5.3.0.RJDCNXM_d98b4e09b5_11.0.zip
+  ROM_NAME: Generic
+  BUILD_TYPE: ab
+  REPACK_NAME: SGSI.zip
+  TZ: Asia/Shanghai
+
 
 
 
@@ -62,7 +57,7 @@ jobs:
 
       - name: Make AB type GSI‌‌...
         run: |
-          sudo bash $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh $ROM_URL $ROM_NAME -b
+          sudo bash $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh -c --$BUILD_TYPE $ROM_URL $ROM_NAME
 
       - name: Packing(AB)...
         run: |
