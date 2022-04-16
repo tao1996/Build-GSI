@@ -1,0 +1,91 @@
+name: GSI_Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ROM_URL:
+        description: 'ROM_URL'
+        required: true
+        default: 'https://bigota.d.miui.com/V12.5.3.0.RJDCNXM/miui_APOLLO_V12.5.3.0.RJDCNXM_d98b4e09b5_11.0.zip'
+      ROM_NAME:
+        description: 'OS_TYPE'
+        required: true
+        default: 'Generic'
+      REPACK_NAME:
+        description: 'REPACK_NAME'
+        required: true
+        default: 'SGSI.zip'
+
+
+
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Get the source code of this repositorie...
+        uses: actions/checkout@main
+
+      - name: Get variable configuration...
+        run: |
+          echo "BUILD_TIME=$(date +%s | md5sum | awk '{print substr($1,1,10)}')" >> $GITHUB_ENV
+
+      - name: Clean up the environment‌‌...
+        run: |
+          docker rmi `docker images -q`
+          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d
+          sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk*
+          sudo -E apt-get update
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get clean
+          df -h
+
+      - name: Configuration Environment‌‌...
+        run: |
+          sudo apt-get install -y git wget
+
+      - name: Get the SGSI tool‌‌...
+        run: |
+          git clone --recurse-submodules https://github.com/erfanoabdi/ErfanGSIs.git $GITHUB_WORKSPACE/ErfanGSIs
+
+      - name: Replace custom condensed content...
+        run: |
+          sed -i 's/\|\| exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
+          sed -i 's/exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
+
+      - name: Configuration tool environment...
+        run: |
+          cd $GITHUB_WORKSPACE/ErfanGSIs
+          mkdir ./output
+          sudo bash $GITHUB_WORKSPACE/ErfanGSIs/setup.sh
+
+      - name: Make AB type GSI‌‌...
+        run: |
+          sudo bash $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh -b $ROM_URL $ROM_NAME
+
+      - name: Packing(AB)...
+        run: |
+          cd $GITHUB_WORKSPACE/ErfanGSIs
+          pwd
+          zip -r AB_${{ github.event.inputs.REPACK_NAME }} output/*
+          ls "AB_${{ github.event.inputs.REPACK_NAME }}"
+          echo "--------------------------------------"
+          ls
+          echo "--------------------------------------"
+          mkdir upload_ab
+          echo "--------------------------------------"
+          ls upload_ab
+          echo "--------------------------------------"
+          if [ $(ls -l AB_${{ github.event.inputs.REPACK_NAME }} | awk '{print $5}') -gt 2147483647 ]; then tar cvzpf - AB_${{ github.event.inputs.REPACK_NAME }} | split -d -b 1024m - upload_ab/AB_${{ github.event.inputs.REPACK_NAME }}; else mv AB_${{ github.event.inputs.REPACK_NAME }} upload_ab/AB_${{ github.event.inputs.REPACK_NAME }}; fi
+          echo "--------------------------------------"
+          ls upload_ab
+          echo "--------------------------------------"
+
+      - name: Upload to Release‌‌...
+        uses: ncipollo/release-action@v1.8.0
+        with:
+          artifacts: "${{ github.workspace }}/ErfanGSIs/upload_ab/*"
+          tag: "${{ github.event.inputs.REPACK_NAME }}_${{ env.BUILD_TIME }}"
+          bodyFile: "${{ github.workspace }}/ErfanGSIs/output/*.txt"
+          token: ${{ secrets.GITHUB_TOKEN }}
