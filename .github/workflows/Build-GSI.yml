@@ -1,5 +1,5 @@
 name: GSI_Build
-
+on:
   watch:
     types: [started]
     
