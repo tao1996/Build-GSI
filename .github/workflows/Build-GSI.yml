@@ -76,10 +76,10 @@ jobs:
               ls upload_ab
               echo "--------------------------------------"
 
-      - name: Upload to Release‌‌...
-        uses: ncipollo/release-action@v1.8.0
-        with:
-          artifacts: "${{ github.workspace }}/ErfanGSIs/upload_ab/*"
-          tag: "${{ github.event.inputs.REPACK_NAME }}_${{ env.BUILD_TIME }}"
-          bodyFile: "${{ github.workspace }}/ErfanGSIs/output/*.txt"
-          token: ${{ secrets.GITHUB_TOKEN }}
+       - name: Upload to Release‌‌...
+         uses: ncipollo/release-action@v1.8.0
+         with:
+           artifacts: "${{ github.workspace }}/ErfanGSIs/upload_ab/*"
+           tag: "${{ github.event.inputs.REPACK_NAME }}_${{ env.BUILD_TIME }}"
+           bodyFile: "${{ github.workspace }}/ErfanGSIs/output/*.txt"
+           token: ${{ secrets.GITHUB_TOKEN }}
