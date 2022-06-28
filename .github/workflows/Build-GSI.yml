@@ -1,81 +1,84 @@
 name: GSI_Build
+
 on:
-  watch:
-    types: [started]
-    
-env:
-  ROM_URL: https://bigota.d.miui.com/V12.5.3.0.RJDCNXM/miui_APOLLO_V12.5.3.0.RJDCNXM_d98b4e09b5_11.0.zip
-  ROM_NAME: Generic
-  BUILD_TYPE: ab
-  REPACK_NAME: SGSI.zip
-  TZ: Asia/Shanghai
-
-
+  workflow_dispatch:
+    inputs:
+      ROM_URL:
+        description: 'ROM_URL'
+        required: true
+        default: 'https://hugeota.d.miui.com/21.5.31/miui_TUCANA_21.5.31_cb42ec9bed_11.0.zip'
+      ZIP_NAME:
+        description: 'ZIP_NAME'
+        required: true
+        default: 'miui_TUCANA_21.5.31_cb42ec9bed_11.0.zip'
+      OS_TYPE:
+        description: 'OS_TYPE'
+        required: true
+        default: 'MIUI'
+      GSI_TYPE:
+        description: 'GSI_TYPE(AB, A, or BOTH)'
+        required: true
+        default: 'ab'
+      REPACK_NAME:
+        description: 'REPACK_NAME'
+        required: true
+        default: 'GSI.zip'
 
 
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-18.04
+    if: github.event.repository.owner.id == github.event.sender.id
 
     steps:
-      - name: Get the source code of this repositorie...
-        uses: actions/checkout@main
+       - name: Checkout
+         uses: actions/checkout@master
 
-      - name: Get variable configuration...
-        run: |
-          echo "BUILD_TIME=$(date +%s | md5sum | awk '{print substr($1,1,10)}')" >> $GITHUB_ENV
+       - name: Initialization environment
+         run: |
+            sudo -E apt-get -qq install git wget
 
-      - name: Clean up the environment‌‌...
-        run: |
-          docker rmi `docker images -q`
-          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d
-          sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk*
-          sudo -E apt-get update
-          sudo -E apt-get -y autoremove --purge
-          sudo -E apt-get clean
-          df -h
+       - name: Get variable configuration...
+         run: |
+            echo "BUILD_TIME=$(date +%s | md5sum | awk '{print substr($1,1,10)}')" >> $GITHUB_ENV
 
-      - name: Configuration Environment‌‌...
-        run: |
-          sudo apt-get install -y git wget
+       - name: Clone ErfanGSI Source Code
+         run: git clone --recurse-submodules https://github.com/erfanoabdi/ErfanGSIs.git ErfanGSIs
 
-      - name: Get the SGSI tool‌‌...
-        run: |
-          git clone --recurse-submodules https://github.com/erfanoabdi/ErfanGSIs.git $GITHUB_WORKSPACE/ErfanGSIs
+       - name: Fix exit
+         run: |
+              sed -i 's/\|\| exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
+              sed -i 's/exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
 
-      - name: Replace custom condensed content...
-        run: |
-          sed -i 's/\|\| exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
-          sed -i 's/exit 1//g' $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh
+       - name: Setting up ErfanGSI requirements
+         run: |
+              cd $GITHUB_WORKSPACE/ErfanGSIs
+              mkdir ./output
+              sudo bash ./setup.sh
 
-      - name: Configuration tool environment...
-        run: |
-          cd $GITHUB_WORKSPACE/ErfanGSIs
-          mkdir ./output
-          sudo bash $GITHUB_WORKSPACE/ErfanGSIs/setup.sh
+       - name: Download Stock Rom & Generate GSI
+         run: |
+              cd  $GITHUB_WORKSPACE/ErfanGSIs
+              sudo bash ./url2GSI.sh -c --$GSI_TYPE $ROM_URL $OS_TYPE
 
-      - name: Make AB type GSI‌‌...
-        run: |
-          sudo bash $GITHUB_WORKSPACE/ErfanGSIs/url2GSI.sh -c --$BUILD_TYPE $ROM_URL $ROM_NAME
-
-      - name: Packing(AB)...
-        run: |
-          cd $GITHUB_WORKSPACE/ErfanGSIs
-          pwd
-          zip -r AB_${{ github.event.inputs.REPACK_NAME }} output/*
-          ls "AB_${{ github.event.inputs.REPACK_NAME }}"
-          echo "--------------------------------------"
-          ls
-          echo "--------------------------------------"
-          mkdir upload_ab
-          echo "--------------------------------------"
-          ls upload_ab
-          echo "--------------------------------------"
-          if [ $(ls -l AB_${{ github.event.inputs.REPACK_NAME }} | awk '{print $5}') -gt 2147483647 ]; then tar cvzpf - AB_${{ github.event.inputs.REPACK_NAME }} | split -d -b 1024m - upload_ab/AB_${{ github.event.inputs.REPACK_NAME }}; else mv AB_${{ github.event.inputs.REPACK_NAME }} upload_ab/AB_${{ github.event.inputs.REPACK_NAME }}; fi
-          echo "--------------------------------------"
-          ls upload_ab
-          echo "--------------------------------------"
+       - name: Zip GSI  
+         run: |
+              cd $GITHUB_WORKSPACE/ErfanGSIs
+              pwd
+              zip -r AB_${{ github.event.inputs.REPACK_NAME }} output/*
+              ls "AB_${{ github.event.inputs.REPACK_NAME }}"
+              echo "--------------------------------------"
+              ls
+              echo "--------------------------------------"
+              mkdir upload_ab
+              echo "--------------------------------------"
+              ls upload_ab
+              echo "--------------------------------------"
+              if [ $(ls -l AB_${{ github.event.inputs.REPACK_NAME }} | awk '{print $5}') -gt 2147483647 ]; then tar cvzpf - AB_${{ github.event.inputs.REPACK_NAME }} | split -d -b 1024m - upload_ab/AB_${{ github.event.inputs.REPACK_NAME }}; else mv AB_${{ github.event.inputs.REPACK_NAME }} upload_ab/AB_${{ github.event.inputs.REPACK_NAME }}; fi
+              echo "--------------------------------------"
+              ls upload_ab
+              echo "--------------------------------------"
 
       - name: Upload to Release‌‌...
         uses: ncipollo/release-action@v1.8.0
